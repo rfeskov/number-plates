@@ -40,6 +40,9 @@ const app: HTMLElement = appElement;
 // Toggle to control automatic focusing/selecting of plate inputs.
 // Set to `false` to disable auto-focus/auto-select behavior.
 const AUTO_FOCUS = false;
+const FOOTER_DATE = new Intl.DateTimeFormat("en-GB", {
+  year: "numeric",
+}).format(new Date());
 
 function getLookupCode(): string {
   if (state.plateType === "civilian") return state.region;
@@ -236,6 +239,12 @@ function render(): void {
         ${getInfoTableHTML()}
       </section>
     </main>
+
+    <footer class="app-footer" aria-label="Credits">
+      <span><a href="https://github.com/rfeskov" target="_blank" rel="noopener noreferrer">rfeskov</a></span>
+      <span>•</span>
+      <span>${FOOTER_DATE}</span>
+    </footer>
   `;
 
   bindEvents();
