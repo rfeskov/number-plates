@@ -100,7 +100,9 @@ export const REGIONS: Record<string, string> = {
 };
 
 export function lookupRegion(code: string): string | null {
-  const normalized = code.trim();
-  if (!normalized) return null;
+  const trimmed = code.trim();
+  if (!trimmed) return null;
+
+  const normalized = trimmed.padStart(2, "0").slice(-2);
   return REGIONS[normalized] ?? null;
 }
