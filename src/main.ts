@@ -24,12 +24,12 @@ const state: State = {
   diplomaticVariant: "ambassador",
   letter1: "А",
   digits3: "123",
-  series2: "ВС",
+  series2: "АА",
   region: "77",
   milDigits4: "1234",
   milLetters2: "АВ",
-  milCode: "77",
-  dipCode: "004",
+  milCode: "99",
+  dipCode: "150",
   dipRegion: "77",
 };
 
@@ -54,7 +54,8 @@ function runDiplomaticLookup(countryCode: string): { found: boolean; title: stri
   const regionLine = regionName
     ? `Регион: ${regionName} (${state.dipRegion})`
     : state.dipRegion
-      ? `Регион ${state.dipRegion} не найден в базе`
+      ? `Код ${state.dipRegion} не включен в Приказ МВД России от 5 октября 2017 г. N 766
+"О государственных регистрационных знаках транспортных средств"`
       : "";
 
   if (country) {
@@ -68,7 +69,8 @@ function runDiplomaticLookup(countryCode: string): { found: boolean; title: stri
   return {
     found: false,
     title: "Код не найден",
-    detail: [`Код «${normalized}» — добавьте в src/data/diplomatic.ts`, regionLine]
+    detail: [`Код «${normalized}» не включен в Приказ МВД России от 5 октября 2017 г. N 766
+"О государственных регистрационных знаках транспортных средств".`, regionLine]
       .filter(Boolean)
       .join(" · "),
   };
@@ -87,7 +89,8 @@ function runLookup(code: string): { found: boolean; title: string; detail: strin
       : {
           found: false,
           title: "Регион не найден",
-          detail: `Код «${trimmed}» отсутствует в базе. Можно добавить в src/data/regions.ts`,
+          detail: `Код «${trimmed}» не включен в Приказ МВД России от 5 октября 2017 г. N 766
+"О государственных регистрационных знаках транспортных средств"`,
         };
   }
 
@@ -98,7 +101,7 @@ function runLookup(code: string): { found: boolean; title: string; detail: strin
       : {
           found: false,
           title: "Код не найден",
-          detail: `Код «${trimmed}» — добавьте расшифровку в src/data/military.ts`,
+          detail: `Код «${trimmed}» не найден в перечне цифровых кодов`,
         };
   }
 
@@ -143,7 +146,7 @@ function renderPlateMain(): string {
     `;
   }
 
-  const code = plateInput("dip-code", "dipCode", state.dipCode, 3, "004");
+  const code = plateInput("dip-code", "dipCode", state.dipCode, 3, "087");
 
   if (state.diplomaticVariant === "ambassador") {
     return `${code}<span class="plate-static">CD</span><span class="plate-static">0</span>`;
