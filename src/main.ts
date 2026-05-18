@@ -65,8 +65,39 @@ function lookupLabel(): string {
     case "military":
       return "Код подразделения";
     case "diplomatic":
-      return state.diplomaticVariant === "ambassador" ? "Код региона" : "Код страны / организации";
+      return "Код страны / организации";
   }
+}
+
+function runDiplomaticLookup(countryCode: string): { found: boolean; title: string; detail: string } {
+  const normalized = countryCode.trim().padStart(3, "0").slice(-3);
+  if (!normalized) {
+    return { found: false, title: "Введите код", detail: "" };
+  }
+
+  const country = lookupDiplomatic(normalized);
+  const regionName = lookupRegion(state.dipRegion);
+  const regionLine = regionName
+    ? `Регион: ${regionName} (${state.dipRegion})`
+    : state.dipRegion
+      ? `Регион ${state.dipRegion} не найден в базе`
+      : "";
+
+  if (country) {
+    return {
+      found: true,
+      title: country,
+      detail: [`Код ${normalized}`, regionLine].filter(Boolean).join(" · "),
+    };
+  }
+
+  return {
+    found: false,
+    title: "Код не найден",
+    detail: [`Код «${normalized}» — добавьте в src/data/diplomatic.ts`, regionLine]
+      .filter(Boolean)
+      .join(" · "),
+  };
 }
 
 function runLookup(code: string): { found: boolean; title: string; detail: string } {
@@ -97,52 +128,15 @@ function runLookup(code: string): { found: boolean; title: string; detail: strin
         };
   }
 
-  if (state.diplomaticVariant === "ambassador") {
-    const region = lookupRegion(trimmed);
-    const country = lookupDiplomatic(state.dipCode);
-    const countryLine = country ? `Страна: ${country} (${state.dipCode})` : "";
-    return region
-      ? {
-          found: true,
-          title: region,
-          detail: [`Регион ${trimmed}`, countryLine].filter(Boolean).join(" · "),
-        }
-      : {
-          found: false,
-          title: "Регион не найден",
-          detail: `Код «${trimmed}» отсутствует в базе регионов`,
-        };
-  }
-
-  const dip = lookupDiplomatic(trimmed.padStart(3, "0").slice(-3));
-  const regionName = lookupRegion(state.dipRegion);
-  const regionLine = regionName
-    ? `Регион: ${regionName} (${state.dipRegion})`
-    : state.dipRegion
-      ? `Регион ${state.dipRegion} не найден в базе`
-      : "";
-
-  return dip
-    ? {
-        found: true,
-        title: dip,
-        detail: [`Код ${trimmed.padStart(3, "0").slice(-3)}`, regionLine].filter(Boolean).join(" · "),
-      }
-    : {
-        found: false,
-        title: "Код не найден",
-        detail: [`Код «${trimmed}» — добавьте в src/data/diplomatic.ts`, regionLine]
-          .filter(Boolean)
-          .join(" · "),
-      };
+  return runDiplomaticLookup(trimmed);
 }
 
 function syncLookupFromPlate(): void {
-  if (state.plateType === "civilian" || (state.plateType === "diplomatic" && state.diplomaticVariant === "ambassador")) {
-    state.lookupInput = state.plateType === "civilian" ? state.region : state.dipRegion;
+  if (state.plateType === "civilian") {
+    state.lookupInput = state.region;
   } else if (state.plateType === "military") {
     state.lookupInput = state.milCode;
-  } else {
+  } else if (state.plateType === "diplomatic") {
     state.lookupInput = state.dipCode;
   }
 }
@@ -206,6 +200,11 @@ function renderPlate(): string {
   const regionPlaceholder =
     state.plateType === "military" ? "14" : "77";
 
+  const rusMarkup =
+    state.plateType === "civilian"
+      ? `<img class="plate-ng__rus" src="./rus.svg" width="38" height="11" alt="RUS" />`
+      : `<span class="plate-ng__rus-text" aria-hidden="true">RUS</span>`;
+
   return `
     <div class="plate-ng plate-ng--${state.plateType}" data-plate="">
       <div class="plate-ng__number">
@@ -213,7 +212,7 @@ function renderPlate(): string {
       </div>
       <div class="plate-ng__region">
         ${plateInput("region", "regionSlot", regionValue, 3, regionPlaceholder)}
-        <img class="plate-ng__rus" src="./rus.svg" width="38" height="11" alt="RUS" />
+        ${rusMarkup}
       </div>
     </div>
   `;
@@ -279,8 +278,8 @@ function render(): void {
       <p>Измените код на номере или введите его ниже. ${
         state.plateType === "military"
           ? "На военных номерах правые цифры — не регион."
-          : state.plateType === "diplomatic" && state.diplomaticVariant !== "ambassador"
-            ? "Трёхзначный код слева — страна или организация."
+          : state.plateType === "diplomatic"
+            ? "Слева — код страны или организации, справа — регион (2 или 3 цифры)."
             : "Правые цифры — код субъекта РФ (2 или 3 знака)."
       }</p>
       <div class="lookup-row">
@@ -349,11 +348,7 @@ function bindEvents(): void {
       handlePlateInput(el);
       focusNextPlateField(el);
       const field = el.dataset.field;
-      if (
-        state.plateType === "diplomatic" &&
-        state.diplomaticVariant !== "ambassador" &&
-        field === "regionSlot"
-      ) {
+      if (state.plateType === "diplomatic" && field === "regionSlot") {
         renderLookupOnly();
         return;
       }
@@ -379,8 +374,9 @@ function bindEvents(): void {
 function applyLookupToPlate(): void {
   if (state.plateType === "civilian") state.region = state.lookupInput;
   else if (state.plateType === "military") state.milCode = state.lookupInput;
-  else if (state.diplomaticVariant === "ambassador") state.dipRegion = state.lookupInput;
-  else state.dipCode = state.lookupInput.padStart(3, "0").slice(-3);
+  else if (state.plateType === "diplomatic") {
+    state.dipCode = state.lookupInput.padStart(3, "0").slice(-3);
+  }
 }
 
 function handlePlateInput(el: HTMLInputElement): void {
@@ -433,7 +429,7 @@ function updatePlateInputs(): void {
   };
 
   set("regionSlot", state.plateType === "civilian" ? state.region : state.plateType === "military" ? state.milCode : state.dipRegion);
-  if (state.plateType === "diplomatic" && state.diplomaticVariant !== "ambassador") {
+  if (state.plateType === "diplomatic") {
     set("dipCode", state.dipCode);
   }
 }
