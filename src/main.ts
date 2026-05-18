@@ -37,15 +37,10 @@ const appElement = document.getElementById("app");
 if (!appElement) throw new Error("#app not found");
 const app: HTMLElement = appElement;
 
-function lookupLabel(): string {
-  switch (state.plateType) {
-    case "civilian":
-      return "Код региона";
-    case "military":
-      return "Код подразделения";
-    case "diplomatic":
-      return "Код страны / организации";
-  }
+function getLookupCode(): string {
+  if (state.plateType === "civilian") return state.region;
+  if (state.plateType === "military") return state.milCode;
+  return state.dipCode;
 }
 
 function runDiplomaticLookup(countryCode: string): { found: boolean; title: string; detail: string } {
@@ -108,16 +103,6 @@ function runLookup(code: string): { found: boolean; title: string; detail: strin
   }
 
   return runDiplomaticLookup(trimmed);
-}
-
-function syncLookupFromPlate(): void {
-  if (state.plateType === "civilian") {
-    state.lookupInput = state.region;
-  } else if (state.plateType === "military") {
-    state.lookupInput = state.milCode;
-  } else if (state.plateType === "diplomatic") {
-    state.lookupInput = state.dipCode;
-  }
 }
 
 function escapeAttr(s: string): string {
@@ -198,7 +183,7 @@ function renderPlate(): string {
 }
 
 function render(): void {
-  const lookup = runLookup(state.lookupInput);
+  const lookup = runLookup(getLookupCode());
   const typeLabels: Record<PlateType, string> = {
     civilian: "Обычные",
     diplomatic: "Дипломатические",
@@ -241,8 +226,6 @@ function render(): void {
     }
 
       <section class="lookup-section">
-        <label class="lookup-label" for="lookup-input">${lookupLabel()}</label>
-        <input id="lookup-input" class="lookup-input" type="text" inputmode="numeric" value="${escapeAttr(state.lookupInput)}" maxlength="3" />
         <div class="lookup-result ${lookup.found ? "found" : lookup.detail ? "missing" : "muted"}">
           ${
             lookup.detail
@@ -276,7 +259,6 @@ function bindEvents(): void {
   app.querySelectorAll<HTMLButtonElement>("[data-type]").forEach((btn) => {
     btn.addEventListener("click", () => {
       state.plateType = btn.dataset.type as PlateType;
-      syncLookupFromPlate();
       render();
     });
   });
@@ -284,18 +266,8 @@ function bindEvents(): void {
   app.querySelectorAll<HTMLButtonElement>("[data-variant]").forEach((btn) => {
     btn.addEventListener("click", () => {
       state.diplomaticVariant = btn.dataset.variant as DiplomaticVariant;
-      syncLookupFromPlate();
       render();
     });
-  });
-
-  const lookupEl = app.querySelector<HTMLInputElement>("#lookup-input");
-  lookupEl?.addEventListener("input", () => {
-    state.lookupInput = lookupEl.value.replace(/\D/g, "").slice(0, 3);
-    lookupEl.value = state.lookupInput;
-    applyLookupToPlate();
-    updatePlateInputs();
-    renderLookupOnly();
   });
 
   const plate = app.querySelector<HTMLElement>("[data-plate]");
@@ -303,13 +275,6 @@ function bindEvents(): void {
     el.addEventListener("input", () => {
       handlePlateInput(el);
       focusNextPlateField(el);
-      const field = el.dataset.field;
-      if (state.plateType === "diplomatic" && field === "regionSlot") {
-        renderLookupOnly();
-        return;
-      }
-      syncLookupFromPlate();
-      if (lookupEl) lookupEl.value = state.lookupInput;
       renderLookupOnly();
     });
 
@@ -325,14 +290,6 @@ function bindEvents(): void {
 
   const first = plate?.querySelector<HTMLInputElement>("input");
   first?.focus();
-}
-
-function applyLookupToPlate(): void {
-  if (state.plateType === "civilian") state.region = state.lookupInput;
-  else if (state.plateType === "military") state.milCode = state.lookupInput;
-  else if (state.plateType === "diplomatic") {
-    state.dipCode = state.lookupInput.padStart(3, "0").slice(-3);
-  }
 }
 
 function handlePlateInput(el: HTMLInputElement): void {
@@ -375,23 +332,8 @@ function handlePlateInput(el: HTMLInputElement): void {
   }
 }
 
-function updatePlateInputs(): void {
-  const plate = app.querySelector<HTMLElement>("[data-plate]");
-  if (!plate) return;
-
-  const set = (field: string, value: string) => {
-    const el = plate.querySelector<HTMLInputElement>(`[data-field="${field}"]`);
-    if (el) el.value = value;
-  };
-
-  set("regionSlot", state.plateType === "civilian" ? state.region : state.plateType === "military" ? state.milCode : state.dipRegion);
-  if (state.plateType === "diplomatic") {
-    set("dipCode", state.dipCode);
-  }
-}
-
 function renderLookupOnly(): void {
-  const lookup = runLookup(state.lookupInput);
+  const lookup = runLookup(getLookupCode());
   const box = app.querySelector(".lookup-result");
   if (!box) return;
   box.className = `lookup-result ${lookup.found ? "found" : lookup.detail ? "missing" : "muted"}`;
@@ -400,5 +342,4 @@ function renderLookupOnly(): void {
     : `<span class="lookup-result__placeholder">${lookup.title}</span>`;
 }
 
-syncLookupFromPlate();
 render();

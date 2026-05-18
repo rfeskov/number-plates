@@ -341,34 +341,7 @@ header {
 .lookup-section {
   width: 100%;
   max-width: 265px;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.5rem;
-}
-
-.lookup-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--muted);
-  letter-spacing: 0.02em;
-}
-
-.lookup-input {
-  width: 100%;
-  padding: 0.6rem 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: #fff;
-  color: var(--text);
-  font: inherit;
-  font-size: 1rem;
-  outline: none;
-  transition: border-color 0.15s;
-}
-
-.lookup-input:focus {
-  border-color: #aaa;
+  text-align: center;
 }
 
 .lookup-result {
