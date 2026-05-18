@@ -37,6 +37,10 @@ const appElement = document.getElementById("app");
 if (!appElement) throw new Error("#app not found");
 const app: HTMLElement = appElement;
 
+// Toggle to control automatic focusing/selecting of plate inputs.
+// Set to `false` to disable auto-focus/auto-select behavior.
+const AUTO_FOCUS = false;
+
 function getLookupCode(): string {
   if (state.plateType === "civilian") return state.region;
   if (state.plateType === "military") return state.milCode;
@@ -149,11 +153,11 @@ function renderPlateMain(): string {
   const code = plateInput("dip-code", "dipCode", state.dipCode, 3, "087");
 
   if (state.diplomaticVariant === "ambassador") {
-    return `${code}<span class="plate-static">CD</span><span class="plate-static">0</span>`;
+    return `${code}<span class="plate-static">CD</span><span class="plate-static">1</span>`;
   }
 
   const status = state.diplomaticVariant === "diplomat" ? "D" : "T";
-  return `${code}<span class="plate-static">${status}</span><span class="plate-static">000</span>`;
+  return `${code}<span class="plate-static">${status}</span><span class="plate-static">001</span>`;
 }
 
 function renderPlate(): string {
@@ -247,23 +251,32 @@ function getInfoTableHTML(): string {
 
     const regionCode = state.dipRegion.trim();
     const regionName = lookupRegion(regionCode);
-    if (regionCode) rows.push(`<tr><td class="code">${escapeAttr(regionCode)}</td><td class="desc">${escapeAttr(regionName ?? regionCode)}</td></tr>`);
+    if (regionCode) {
+      const regionDesc = regionName ? regionName : `Код ${regionCode} не найден`;
+      rows.push(`<tr><td class="code">${escapeAttr(regionCode)}</td><td class="desc">${escapeAttr(regionDesc)}</td></tr>`);
+    }
 
     const variantLabel = state.diplomaticVariant === "ambassador" ? "CD" : state.diplomaticVariant === "diplomat" ? "D" : "T";
     const variantDesc = state.diplomaticVariant === "ambassador"
-      ? "Руководитель дипломатической миссии (посол)"
+      ? "Глава дипломатической миссии (посол)"
       : state.diplomaticVariant === "diplomat"
-        ? "Дипломатический персонал (члены миссии)"
-        : "Технический и административный персонал";
+        ? "Дипломатический персонал"
+        : "Технический персонал";
     rows.push(`<tr><td class="code">${variantLabel}</td><td class="desc">${variantDesc}</td></tr>`);
   } else if (state.plateType === "civilian") {
     const regionCode = state.region.trim();
     const regionName = lookupRegion(regionCode);
-    if (regionCode) rows.push(`<tr><td class="code">${escapeAttr(regionCode)}</td><td class="desc">${escapeAttr(regionName ?? regionCode)}</td></tr>`);
+    if (regionCode) {
+      const regionDesc = regionName ? regionName : `Код ${regionCode} не найден`;
+      rows.push(`<tr><td class="code">${escapeAttr(regionCode)}</td><td class="desc">${escapeAttr(regionDesc)}</td></tr>`);
+    }
   } else if (state.plateType === "military") {
     const code = state.milCode.trim();
     const name = lookupMilitary(code);
-    if (code) rows.push(`<tr><td class="code">${escapeAttr(code)}</td><td class="desc">${escapeAttr(name ?? code)}</td></tr>`);
+    if (code) {
+      const nameDesc = name ? name : `Код ${code} не найден`;
+      rows.push(`<tr><td class="code">${escapeAttr(code)}</td><td class="desc">${escapeAttr(nameDesc)}</td></tr>`);
+    }
   }
 
   if (rows.length === 0) {
@@ -283,8 +296,12 @@ function focusNextPlateField(current: HTMLInputElement): void {
 
   const maxLen = Number(current.maxLength) || 0;
   if (current.value.length >= maxLen) {
-    inputs[idx + 1].focus();
-    inputs[idx + 1].select();
+    if (AUTO_FOCUS) {
+      inputs[idx + 1].focus();
+      inputs[idx + 1].select();
+    } else {
+      inputs[idx + 1].focus();
+    }
   }
 }
 
@@ -322,7 +339,7 @@ function bindEvents(): void {
   });
 
   const first = plate?.querySelector<HTMLInputElement>("input");
-  first?.focus();
+  if (AUTO_FOCUS) first?.focus();
 }
 
 function handlePlateInput(el: HTMLInputElement): void {
