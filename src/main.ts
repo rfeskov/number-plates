@@ -2,12 +2,7 @@ import "./style.css";
 import { lookupDiplomatic } from "./data/diplomatic";
 import { lookupMilitary } from "./data/military";
 import { lookupRegion } from "./data/regions";
-import {
-  PLATE_LETTERS,
-  sanitizeDigit,
-  sanitizeLetter,
-  sanitizeLetters,
-} from "./plate-letters";
+import { sanitizeDigit, sanitizeLetter, sanitizeLetters } from "./plate-letters";
 import type { DiplomaticVariant, PlateType } from "./types";
 
 interface State {
@@ -22,7 +17,6 @@ interface State {
   milCode: string;
   dipCode: string;
   dipRegion: string;
-  lookupInput: string;
 }
 
 const state: State = {
@@ -37,26 +31,11 @@ const state: State = {
   milCode: "77",
   dipCode: "004",
   dipRegion: "77",
-  lookupInput: "",
 };
 
 const appElement = document.getElementById("app");
 if (!appElement) throw new Error("#app not found");
 const app: HTMLElement = appElement;
-
-function formatHints(): Record<PlateType, string> {
-  return {
-    civilian: "<code>Буква 000 ББ YY</code> — буквы из набора АВЕКМНОРСТУХ, YY/YYY — код субъекта РФ",
-    military:
-      "<code>0000 ББ YY</code> — YY — код военного округа или ведомства, не регион",
-    diplomatic:
-      state.diplomaticVariant === "ambassador"
-        ? "<code>ZZZ CD 0 YY</code> — глава дипмиссии (CD)"
-        : state.diplomaticVariant === "diplomat"
-          ? "<code>ZZZ D 000 YY</code> — дипломатический статус (D)"
-          : "<code>ZZZ T 000 YY</code> — административный персонал (T)",
-  };
-}
 
 function lookupLabel(): string {
   switch (state.plateType) {
@@ -228,8 +207,6 @@ function render(): void {
 
   app.innerHTML = `
     <header>
-      <h1>Российские госномера</h1>
-      <p>Форматы, расшифровка регионов и кодов</p>
       <nav class="type-switcher" aria-label="Тип номера">
         ${(["civilian", "diplomatic", "military"] as PlateType[])
           .map(
@@ -244,58 +221,37 @@ function render(): void {
       </nav>
     </header>
 
+    <main class="content">
     <section class="plate-section">
       <div class="plate-wrap">
         ${renderPlate()}
       </div>
-      <p class="format-hint">${formatHints()[state.plateType]}</p>
     </section>
 
     ${
       state.plateType === "diplomatic"
         ? `
-    <section class="panel">
-      <h2>Вариант дипломатического номера</h2>
       <div class="diplomatic-variants">
-        <button type="button" class="variant-btn ${state.diplomaticVariant === "ambassador" ? "active" : ""}" data-variant="ambassador">Глава миссии (CD)</button>
-        <button type="button" class="variant-btn ${state.diplomaticVariant === "diplomat" ? "active" : ""}" data-variant="diplomat">Дипломат (D)</button>
-        <button type="button" class="variant-btn ${state.diplomaticVariant === "staff" ? "active" : ""}" data-variant="staff">Персонал (T)</button>
+        <button type="button" class="variant-btn ${state.diplomaticVariant === "ambassador" ? "active" : ""}" data-variant="ambassador">CD</button>
+        <button type="button" class="variant-btn ${state.diplomaticVariant === "diplomat" ? "active" : ""}" data-variant="diplomat">D</button>
+        <button type="button" class="variant-btn ${state.diplomaticVariant === "staff" ? "active" : ""}" data-variant="staff">T</button>
       </div>
-      <p class="letters-note">Допустимые буквы на обычных номерах: <span>${PLATE_LETTERS.join(" ")}</span></p>
-    </section>
     `
-        : state.plateType === "civilian"
-          ? `
-    <section class="panel">
-      <p class="letters-note">Допустимые буквы: <span>${PLATE_LETTERS.join(" ")}</span> (кириллица, похожая на латиницу)</p>
-    </section>
-    `
-          : ""
+        : ""
     }
 
-    <section class="panel">
-      <h2>Расшифровка</h2>
-      <p>Измените код на номере или введите его ниже. ${
-        state.plateType === "military"
-          ? "На военных номерах правые цифры — не регион."
-          : state.plateType === "diplomatic"
-            ? "Слева — код страны или организации, справа — регион (2 или 3 цифры)."
-            : "Правые цифры — код субъекта РФ (2 или 3 знака)."
-      }</p>
-      <div class="lookup-row">
-        <div class="lookup-field">
-          <label for="lookup-input">${lookupLabel()}</label>
-          <input id="lookup-input" type="text" inputmode="numeric" value="${escapeAttr(state.lookupInput)}" maxlength="3" />
+      <section class="lookup-section">
+        <label class="lookup-label" for="lookup-input">${lookupLabel()}</label>
+        <input id="lookup-input" class="lookup-input" type="text" inputmode="numeric" value="${escapeAttr(state.lookupInput)}" maxlength="3" />
+        <div class="lookup-result ${lookup.found ? "found" : lookup.detail ? "missing" : "muted"}">
+          ${
+            lookup.detail
+              ? `<span class="lookup-result__title">${lookup.title}</span><span class="lookup-result__detail">${lookup.detail}</span>`
+              : `<span class="lookup-result__placeholder">${lookup.title}</span>`
+          }
         </div>
-      </div>
-      <div class="lookup-result ${lookup.found ? "found" : lookup.detail ? "missing" : "muted"}">
-        ${
-          lookup.detail
-            ? `<strong>${lookup.title}</strong><br>${lookup.detail}`
-            : `<span class="muted">${lookup.title}</span>`
-        }
-      </div>
-    </section>
+      </section>
+    </main>
   `;
 
   bindEvents();
@@ -440,8 +396,8 @@ function renderLookupOnly(): void {
   if (!box) return;
   box.className = `lookup-result ${lookup.found ? "found" : lookup.detail ? "missing" : "muted"}`;
   box.innerHTML = lookup.detail
-    ? `<strong>${lookup.title}</strong><br>${lookup.detail}`
-    : `<span class="muted">${lookup.title}</span>`;
+    ? `<span class="lookup-result__title">${lookup.title}</span><span class="lookup-result__detail">${lookup.detail}</span>`
+    : `<span class="lookup-result__placeholder">${lookup.title}</span>`;
 }
 
 syncLookupFromPlate();

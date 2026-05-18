@@ -1,7 +1,3 @@
-/**
- * Country / organization codes on red diplomatic plates (ZZZ).
- * Sample entries — extend src/data/diplomatic.ts with your full list.
- */
 export const DIPLOMATIC_CODES: Record<string, string> = {
   "001": "Великобритания",
   "002": "Германия",
