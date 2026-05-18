@@ -368,6 +368,41 @@ header {
   font-size: 0.875rem;
 }
 
+.info-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.info-table tr {
+  border-bottom: 1px solid var(--border);
+}
+
+.info-table tr:last-child {
+  border-bottom: 0;
+}
+
+.info-table td {
+  padding: 0.5rem 0.65rem;
+  font-size: 0.875rem;
+  vertical-align: middle;
+}
+
+.info-table td.code {
+  width: 30%;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.info-table td.desc {
+  color: var(--muted);
+  text-align: left;
+}
+
 .lookup-result.found .lookup-result__title {
   color: var(--text);
 }
