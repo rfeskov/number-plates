@@ -2,7 +2,7 @@ import "./style.css";
 import { lookupDiplomatic } from "./data/diplomatic";
 import { lookupMilitary } from "./data/military";
 import { lookupRegion } from "./data/regions";
-import { sanitizeDigit, sanitizeLetter, sanitizeLetters } from "./plate-letters";
+import { PLATE_LETTERS, sanitizeDigit, sanitizeLetter, sanitizeLetters } from "./plate-letters";
 import type { DiplomaticVariant, PlateType } from "./types";
 
 interface State {
@@ -22,15 +22,15 @@ interface State {
 const state: State = {
   plateType: "civilian",
   diplomaticVariant: "ambassador",
-  letter1: "А",
-  digits3: "123",
-  series2: "АА",
-  region: "77",
-  milDigits4: "1234",
-  milLetters2: "АВ",
-  milCode: "99",
-  dipCode: "150",
-  dipRegion: "77",
+  letter1: "",
+  digits3: "",
+  series2: "",
+  region: "",
+  milDigits4: "",
+  milLetters2: "",
+  milCode: "",
+  dipCode: "",
+  dipRegion: "",
 };
 
 const appElement = document.getElementById("app");
@@ -43,6 +43,44 @@ const AUTO_FOCUS = false;
 const FOOTER_DATE = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 }).format(new Date());
+
+function randomItem<T>(items: T[]): T {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+function randomDigits(length: number): string {
+  let value = "";
+  for (let index = 0; index < length; index += 1) {
+    value += Math.floor(Math.random() * 10).toString();
+  }
+  return value;
+}
+
+function randomPlateLetters(length: number): string {
+  let value = "";
+  for (let index = 0; index < length; index += 1) {
+    value += randomItem(PLATE_LETTERS);
+  }
+  return value;
+}
+
+function randomizePlateDefaults(type: PlateType): void {
+  if (type === "civilian") {
+    state.letter1 = randomPlateLetters(1);
+    state.digits3 = randomDigits(3);
+    state.series2 = randomPlateLetters(2);
+    state.region = "";
+    return;
+  }
+
+  if (type === "military") {
+    state.milDigits4 = randomDigits(4);
+    state.milLetters2 = randomPlateLetters(2);
+    state.milCode = "";
+  }
+}
+
+randomizePlateDefaults(state.plateType);
 
 function getLookupCode(): string {
   if (state.plateType === "civilian") return state.region;
@@ -141,19 +179,19 @@ function renderPlateMain(): string {
   if (state.plateType === "civilian") {
     return `
       ${plateInput("series1", "series1", state.letter1, 1, "A")}
-      ${plateInput("number", "digits3", state.digits3, 3, "777")}
+      ${plateInput("number", "digits3", state.digits3, 3, "000")}
       ${plateInput("series2", "series2", state.series2, 2, "AA")}
     `;
   }
 
   if (state.plateType === "military") {
     return `
-      ${plateInput("digits4", "milDigits4", state.milDigits4, 4, "1234")}
+      ${plateInput("digits4", "milDigits4", state.milDigits4, 4, "0000")}
       ${plateInput("letters2", "milLetters2", state.milLetters2, 2, "AA")}
     `;
   }
 
-  const code = plateInput("dip-code", "dipCode", state.dipCode, 3, "087");
+  const code = plateInput("dip-code", "dipCode", state.dipCode, 3, "000");
 
   if (state.diplomaticVariant === "ambassador") {
     return `${code}<span class="plate-static">CD</span><span class="plate-static">1</span>`;
@@ -172,7 +210,7 @@ function renderPlate(): string {
         : state.dipRegion;
 
   const regionPlaceholder =
-    state.plateType === "military" ? "14" : "77";
+    state.plateType === "military" ? "00" : "00";
 
   const rusMarkup =
     state.plateType === "civilian"
@@ -254,9 +292,12 @@ function getInfoTableHTML(): string {
   const rows: string[] = [];
 
   if (state.plateType === "diplomatic") {
-    const code = state.dipCode.trim().padStart(3, "0").slice(-3);
-    const country = lookupDiplomatic(code);
-    if (code) rows.push(`<tr><td class="code">${escapeAttr(code)}</td><td class="desc">${escapeAttr(country ?? "Код не найден")}</td></tr>`);
+    const rawCode = state.dipCode.trim();
+    if (rawCode) {
+      const code = rawCode.padStart(3, "0").slice(-3);
+      const country = lookupDiplomatic(code);
+      rows.push(`<tr><td class="code">${escapeAttr(code)}</td><td class="desc">${escapeAttr(country ?? "Код не найден")}</td></tr>`);
+    }
 
     const regionCode = state.dipRegion.trim();
     const regionName = lookupRegion(regionCode);
@@ -318,6 +359,9 @@ function bindEvents(): void {
   app.querySelectorAll<HTMLButtonElement>("[data-type]").forEach((btn) => {
     btn.addEventListener("click", () => {
       state.plateType = btn.dataset.type as PlateType;
+      if (state.plateType === "civilian" || state.plateType === "military") {
+        randomizePlateDefaults(state.plateType);
+      }
       render();
     });
   });
