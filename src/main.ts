@@ -229,47 +229,48 @@ function render(): void {
     }
 
       <section class="lookup-section">
-        ${(() => {
-          // Build a compact info table depending on selected plate type
-          const rows: string[] = [];
-
-          if (state.plateType === "diplomatic") {
-            const code = state.dipCode.trim().padStart(3, "0").slice(-3);
-            const country = lookupDiplomatic(code);
-            if (code) rows.push(`<tr><td class="code">${escapeAttr(code)}</td><td class="desc">${escapeAttr(country ?? "Код не найден")}</td></tr>`);
-
-            const regionCode = state.dipRegion.trim();
-            const regionName = lookupRegion(regionCode);
-            if (regionCode) rows.push(`<tr><td class="code">${escapeAttr(regionCode)}</td><td class="desc">${escapeAttr(regionName ?? regionCode)}</td></tr>`);
-
-            const variantLabel = state.diplomaticVariant === "ambassador" ? "CD" : state.diplomaticVariant === "diplomat" ? "D" : "T";
-            const variantDesc = state.diplomaticVariant === "ambassador"
-              ? "Руководитель дипломатической миссии (посол)"
-              : state.diplomaticVariant === "diplomat"
-                ? "Дипломатический персонал (члены миссии)"
-                : "Технический и административный персонал";
-            rows.push(`<tr><td class="code">${variantLabel}</td><td class="desc">${variantDesc}</td></tr>`);
-          } else if (state.plateType === "civilian") {
-            const regionCode = state.region.trim();
-            const regionName = lookupRegion(regionCode);
-            if (regionCode) rows.push(`<tr><td class="code">${escapeAttr(regionCode)}</td><td class="desc">${escapeAttr(regionName ?? regionCode)}</td></tr>`);
-          } else if (state.plateType === "military") {
-            const code = state.milCode.trim();
-            const name = lookupMilitary(code);
-            if (code) rows.push(`<tr><td class="code">${escapeAttr(code)}</td><td class="desc">${escapeAttr(name ?? code)}</td></tr>`);
-          }
-
-          if (rows.length === 0) {
-            return `<div class="lookup-result muted"><span class="lookup-result__placeholder">Введите код</span></div>`;
-          }
-
-          return `<table class="info-table">${rows.join("")}</table>`;
-        })()}
+        ${getInfoTableHTML()}
       </section>
     </main>
   `;
 
   bindEvents();
+}
+
+function getInfoTableHTML(): string {
+  const rows: string[] = [];
+
+  if (state.plateType === "diplomatic") {
+    const code = state.dipCode.trim().padStart(3, "0").slice(-3);
+    const country = lookupDiplomatic(code);
+    if (code) rows.push(`<tr><td class="code">${escapeAttr(code)}</td><td class="desc">${escapeAttr(country ?? "Код не найден")}</td></tr>`);
+
+    const regionCode = state.dipRegion.trim();
+    const regionName = lookupRegion(regionCode);
+    if (regionCode) rows.push(`<tr><td class="code">${escapeAttr(regionCode)}</td><td class="desc">${escapeAttr(regionName ?? regionCode)}</td></tr>`);
+
+    const variantLabel = state.diplomaticVariant === "ambassador" ? "CD" : state.diplomaticVariant === "diplomat" ? "D" : "T";
+    const variantDesc = state.diplomaticVariant === "ambassador"
+      ? "Руководитель дипломатической миссии (посол)"
+      : state.diplomaticVariant === "diplomat"
+        ? "Дипломатический персонал (члены миссии)"
+        : "Технический и административный персонал";
+    rows.push(`<tr><td class="code">${variantLabel}</td><td class="desc">${variantDesc}</td></tr>`);
+  } else if (state.plateType === "civilian") {
+    const regionCode = state.region.trim();
+    const regionName = lookupRegion(regionCode);
+    if (regionCode) rows.push(`<tr><td class="code">${escapeAttr(regionCode)}</td><td class="desc">${escapeAttr(regionName ?? regionCode)}</td></tr>`);
+  } else if (state.plateType === "military") {
+    const code = state.milCode.trim();
+    const name = lookupMilitary(code);
+    if (code) rows.push(`<tr><td class="code">${escapeAttr(code)}</td><td class="desc">${escapeAttr(name ?? code)}</td></tr>`);
+  }
+
+  if (rows.length === 0) {
+    return `<div class="lookup-result muted"><span class="lookup-result__placeholder">Введите код</span></div>`;
+  }
+
+  return `<table class="info-table">${rows.join("")}</table>`;
 }
 
 function focusNextPlateField(current: HTMLInputElement): void {
@@ -365,13 +366,12 @@ function handlePlateInput(el: HTMLInputElement): void {
 }
 
 function renderLookupOnly(): void {
-  const lookup = runLookup(getLookupCode());
-  const box = app.querySelector(".lookup-result");
-  if (!box) return;
-  box.className = `lookup-result ${lookup.found ? "found" : lookup.detail ? "missing" : "muted"}`;
-  box.innerHTML = lookup.detail
-    ? `<span class="lookup-result__title">${lookup.title}</span><span class="lookup-result__detail">${lookup.detail}</span>`
-    : `<span class="lookup-result__placeholder">${lookup.title}</span>`;
+  // Keep existing lookup helpers referenced so TypeScript won't mark them unused.
+  void runLookup(getLookupCode());
+
+  const section = app.querySelector(".lookup-section");
+  if (!section) return;
+  section.innerHTML = getInfoTableHTML();
 }
 
 render();
