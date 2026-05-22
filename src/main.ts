@@ -415,12 +415,14 @@ function render(): void {
             <button type="button" class="back-btn" data-close-tables="">Назад</button>
             <h2>Справочные таблицы</h2>
           </div>
-          <nav class="tables-tabs" aria-label="Разделы таблиц">
-            <button type="button" class="tab-btn ${state.tableTab === "regions" ? "active" : ""}" data-table-tab="regions">Регионы</button>
-            <button type="button" class="tab-btn ${state.tableTab === "diplomatic" ? "active" : ""}" data-table-tab="diplomatic">Дипломатические</button>
-            <button type="button" class="tab-btn ${state.tableTab === "military" ? "active" : ""}" data-table-tab="military">Военные</button>
-          </nav>
-          ${renderTablesView()}
+          <div class="tables-overlay__body">
+            <nav class="tables-tabs" aria-label="Разделы таблиц">
+              <button type="button" class="tab-btn ${state.tableTab === "regions" ? "active" : ""}" data-table-tab="regions">Регионы</button>
+              <button type="button" class="tab-btn ${state.tableTab === "diplomatic" ? "active" : ""}" data-table-tab="diplomatic">Дипломатические</button>
+              <button type="button" class="tab-btn ${state.tableTab === "military" ? "active" : ""}" data-table-tab="military">Военные</button>
+            </nav>
+            ${renderTablesView()}
+          </div>
         </div>
       </div>
     `
