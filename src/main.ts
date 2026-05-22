@@ -412,8 +412,15 @@ function render(): void {
         <div class="tables-overlay__backdrop" data-close-tables=""></div>
         <div class="tables-overlay__panel">
           <div class="tables-overlay__header">
-            <button type="button" class="back-btn" data-close-tables="">Назад</button>
             <h2>Справочные таблицы</h2>
+            <button type="button" class="close-btn" data-close-tables="" aria-label="Закрыть">
+              <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+                <path
+                  d="M6.4 5.3a1 1 0 0 1 1.4 0L12 9.6l4.2-4.3a1 1 0 1 1 1.4 1.4L13.4 11l4.2 4.3a1 1 0 0 1-1.4 1.4L12 12.4l-4.2 4.3a1 1 0 1 1-1.4-1.4L10.6 11 6.4 6.7a1 1 0 0 1 0-1.4Z"
+                  fill="currentColor"
+                />
+              </svg>
+            </button>
           </div>
           <div class="tables-overlay__body">
             <nav class="tables-tabs" aria-label="Разделы таблиц">
@@ -512,6 +519,70 @@ function sortEntries(entries: Array<[string, string]>): Array<[string, string]> 
   return [...entries].sort((left, right) => Number(left[0]) - Number(right[0]));
 }
 
+function getMilitaryTableRows(): Array<[string, string]> {
+  const rows: Array<[string, string]> = [];
+  const entries = sortEntries(Object.entries(MILITARY_CODES));
+
+  let currentLabel: string | null = null;
+  let rangeStart: number | null = null;
+  let rangeEnd: number | null = null;
+
+  const flushRange = (): void => {
+    if (currentLabel === null || rangeStart === null || rangeEnd === null) return;
+    const start = rangeStart.toString().padStart(2, "0");
+    const end = rangeEnd.toString().padStart(2, "0");
+    const label = rangeEnd > rangeStart && currentLabel === "Резервный код"
+      ? "Резервные коды"
+      : currentLabel;
+    if (rangeStart === rangeEnd) {
+      rows.push([start, label]);
+    } else if (rangeEnd - rangeStart === 1) {
+      rows.push([`${start}, ${end}`, label]);
+    } else {
+      rows.push([`${start}–${end}`, label]);
+    }
+    currentLabel = null;
+    rangeStart = null;
+    rangeEnd = null;
+  };
+
+  for (const [code, name] of entries) {
+    const numeric = Number(code);
+    if (currentLabel === name && rangeEnd !== null && numeric === rangeEnd + 1) {
+      rangeEnd = numeric;
+      continue;
+    }
+
+    flushRange();
+    currentLabel = name;
+    rangeStart = numeric;
+    rangeEnd = numeric;
+  }
+
+  flushRange();
+  return rows;
+}
+
+function getRegionTableRows(): Array<[string, string]> {
+  const grouped = new Map<string, string[]>();
+  for (const [code, name] of Object.entries(REGIONS)) {
+    const existing = grouped.get(name);
+    if (existing) {
+      existing.push(code);
+    } else {
+      grouped.set(name, [code]);
+    }
+  }
+
+  const rows: Array<[string, string]> = [];
+  for (const [name, codes] of grouped.entries()) {
+    const sorted = codes.sort((left, right) => Number(left) - Number(right));
+    rows.push([sorted.join(", "), name]);
+  }
+
+  return rows.sort((left, right) => Number(left[0].split(", ")[0]) - Number(right[0].split(", ")[0]));
+}
+
 function renderDataTable(title: string, rows: Array<[string, string]>, className: string): string {
   return `
     <section class="data-table-card ${className}">
@@ -536,10 +607,10 @@ function renderTablesView(): string {
   }
 
   if (state.tableTab === "military") {
-    return renderDataTable("Военные коды", sortEntries(Object.entries(MILITARY_CODES)), "data-table-card--military");
+    return renderDataTable("Военные коды", getMilitaryTableRows(), "data-table-card--military");
   }
 
-  return renderDataTable("Регионы и субъекты", sortEntries(Object.entries(REGIONS)), "data-table-card--regions");
+  return renderDataTable("Регионы и субъекты", getRegionTableRows(), "data-table-card--regions");
 }
 
 function focusNextPlateField(current: HTMLInputElement): void {

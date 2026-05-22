@@ -533,7 +533,7 @@ header {
   position: sticky;
   top: 0;
   z-index: 1;
-  padding: 1.75rem 1.25rem;
+  padding: 1.5rem;
   background: var(--bg);
 }
 
@@ -549,26 +549,32 @@ header {
   font-size: 1rem;
 }
 
-.back-btn {
+.close-btn {
   position: absolute;
-  left: 1rem;
+  right: 0.4rem;
   top: 50%;
   transform: translateY(-50%);
-  padding: 0.45rem 0.85rem;
+  width: 36px;
+  height: 36px;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: #fff;
   color: var(--muted);
-  font: inherit;
-  font-size: 0.8rem;
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 
-.back-btn:hover {
+.close-btn:hover {
   color: var(--text);
   border-color: #ccc;
+}
+
+.close-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .tables-tabs {
