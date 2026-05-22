@@ -1,13 +1,16 @@
 import "./style.css";
-import { lookupDiplomatic } from "./data/diplomatic";
-import { lookupMilitary } from "./data/military";
-import { lookupRegion } from "./data/regions";
+import { DIPLOMATIC_CODES, lookupDiplomatic } from "./data/diplomatic";
+import { MILITARY_CODES, lookupMilitary } from "./data/military";
+import { REGIONS, lookupRegion } from "./data/regions";
 import { PLATE_LETTERS, sanitizeDigit, sanitizeLetter, sanitizeLetters } from "./plate-letters";
 import type { DiplomaticVariant, PlateType } from "./types";
 
 interface State {
   plateType: PlateType;
   diplomaticVariant: DiplomaticVariant;
+  showTables: boolean;
+  tableTab: "regions" | "diplomatic" | "military";
+  searchQuery: string;
   letter1: string;
   digits3: string;
   series2: string;
@@ -22,6 +25,9 @@ interface State {
 const state: State = {
   plateType: "civilian",
   diplomaticVariant: "ambassador",
+  showTables: false,
+  tableTab: "regions",
+  searchQuery: "",
   letter1: "",
   digits3: "",
   series2: "",
@@ -157,6 +163,144 @@ function escapeAttr(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 }
 
+interface SearchEntry {
+  code: string;
+  name: string;
+}
+
+function getSearchConfig(): { label: string; placeholder: string } {
+  if (state.plateType === "civilian") {
+    return { label: "Поиск региона", placeholder: "Поиск" };
+  }
+
+  if (state.plateType === "military") {
+    return { label: "Поиск военного кода", placeholder: "Поиск" };
+  }
+
+  return { label: "Поиск страны", placeholder: "Поиск" };
+}
+
+function getSearchEntries(): SearchEntry[] {
+  if (state.plateType === "civilian") {
+    return Object.entries(REGIONS).map(([code, name]) => ({ code, name }));
+  }
+
+  if (state.plateType === "military") {
+    return Object.entries(MILITARY_CODES).map(([code, name]) => ({ code, name }));
+  }
+
+  return Object.entries(DIPLOMATIC_CODES).map(([code, name]) => ({ code, name }));
+}
+
+function getSearchResults(query: string): SearchEntry[] {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+
+  const needle = trimmed.toLowerCase();
+  const digits = trimmed.replace(/\D/g, "");
+
+  const ranked = getSearchEntries()
+    .map((entry) => {
+      let score = 0;
+      if (digits) {
+        if (entry.code === digits) score = 100;
+        else if (entry.code.startsWith(digits)) score = 80;
+        else if (entry.code.includes(digits)) score = 30;
+      }
+
+      if (!score) {
+        const name = entry.name.toLowerCase();
+        if (name.startsWith(needle)) score = 70;
+        else if (name.includes(needle)) score = 50;
+      }
+
+      return { entry, score };
+    })
+    .filter((item) => item.score > 0)
+    .sort((left, right) => right.score - left.score || left.entry.code.localeCompare(right.entry.code));
+
+  return ranked.slice(0, 6).map((item) => item.entry);
+}
+
+function getSearchResultsHTML(entries: SearchEntry[], hasQuery: boolean): string {
+  if (entries.length === 0) {
+    return hasQuery ? `<div class="search-empty">Ничего не найдено</div>` : "";
+  }
+
+  return entries
+    .map(
+      (entry) => `
+      <button
+        type="button"
+        class="search-result"
+        data-search-code="${escapeAttr(entry.code)}"
+        data-search-name="${escapeAttr(entry.name)}"
+      >
+        <span class="search-result__code">${escapeAttr(entry.code)}</span>
+        <span class="search-result__name">${escapeAttr(entry.name)}</span>
+      </button>
+    `,
+    )
+    .join("");
+}
+
+function applySearchSelection(entry: SearchEntry): void {
+  if (state.plateType === "civilian") {
+    state.region = sanitizeDigit(entry.code, 3);
+  } else if (state.plateType === "military") {
+    state.milCode = sanitizeDigit(entry.code, 3);
+  } else {
+    state.dipCode = sanitizeDigit(entry.code, 3);
+  }
+
+  state.searchQuery = "";
+  render();
+}
+
+function renderSearch(): string {
+  const { label, placeholder } = getSearchConfig();
+  const results = getSearchResults(state.searchQuery);
+  const hasQuery = state.searchQuery.trim().length > 0;
+
+  return `
+    <div class="search-bar">
+      <label class="sr-only" for="plate-search">${escapeAttr(label)}</label>
+      <div class="search-row">
+        <div class="search-input-wrap">
+          <span class="search-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+              <path
+                d="M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14Zm0-2a9 9 0 1 0 5.58 16.06l4.18 4.18a1 1 0 0 0 1.42-1.42l-4.18-4.18A9 9 0 0 0 11 2Z"
+                fill="currentColor"
+              />
+            </svg>
+          </span>
+          <input
+            id="plate-search"
+            class="search-input"
+            type="search"
+            placeholder="${escapeAttr(placeholder)}"
+            value="${escapeAttr(state.searchQuery)}"
+            data-search=""
+            autocomplete="off"
+          />
+        </div>
+        <button type="button" class="tables-btn" data-view="tables" aria-label="Справочные таблицы">
+          <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+            <path
+              d="M5 6h14a1 1 0 1 1 0 2H5a1 1 0 1 1 0-2Zm0 5h14a1 1 0 1 1 0 2H5a1 1 0 1 1 0-2Zm0 5h14a1 1 0 1 1 0 2H5a1 1 0 1 1 0-2Z"
+              fill="currentColor"
+            />
+          </svg>
+        </button>
+      </div>
+      <div class="search-results" data-search-results="" role="listbox" aria-label="Результаты поиска">
+        ${getSearchResultsHTML(results, hasQuery)}
+      </div>
+    </div>
+  `;
+}
+
 function plateInput(
   cssClass: string,
   field: string,
@@ -231,12 +375,56 @@ function renderPlate(): string {
 }
 
 function render(): void {
-  
   const typeLabels: Record<PlateType, string> = {
     civilian: "Обычные",
     diplomatic: "Дипломатические",
     military: "Военные",
   };
+
+  const plateView = `
+      <section class="plate-section">
+        ${renderSearch()}
+        <div class="plate-wrap">
+          ${renderPlate()}
+        </div>
+      </section>
+
+      ${
+        state.plateType === "diplomatic"
+          ? `
+        <div class="diplomatic-variants">
+          <button type="button" class="variant-btn ${state.diplomaticVariant === "ambassador" ? "active" : ""}" data-variant="ambassador">CD</button>
+          <button type="button" class="variant-btn ${state.diplomaticVariant === "diplomat" ? "active" : ""}" data-variant="diplomat">D</button>
+          <button type="button" class="variant-btn ${state.diplomaticVariant === "staff" ? "active" : ""}" data-variant="staff">T</button>
+        </div>
+      `
+          : ""
+      }
+
+      <section class="lookup-section">
+        ${getInfoTableHTML()}
+      </section>
+  `;
+
+  const tablesOverlay = state.showTables
+    ? `
+      <div class="tables-overlay" role="dialog" aria-modal="true" aria-label="Справочные таблицы">
+        <div class="tables-overlay__backdrop" data-close-tables=""></div>
+        <div class="tables-overlay__panel">
+          <div class="tables-overlay__header">
+            <button type="button" class="back-btn" data-close-tables="">Назад</button>
+            <h2>Справочные таблицы</h2>
+          </div>
+          <nav class="tables-tabs" aria-label="Разделы таблиц">
+            <button type="button" class="tab-btn ${state.tableTab === "regions" ? "active" : ""}" data-table-tab="regions">Регионы</button>
+            <button type="button" class="tab-btn ${state.tableTab === "diplomatic" ? "active" : ""}" data-table-tab="diplomatic">Дипломатические</button>
+            <button type="button" class="tab-btn ${state.tableTab === "military" ? "active" : ""}" data-table-tab="military">Военные</button>
+          </nav>
+          ${renderTablesView()}
+        </div>
+      </div>
+    `
+    : "";
 
   app.innerHTML = `
     <header>
@@ -255,28 +443,10 @@ function render(): void {
     </header>
 
     <main class="content">
-    <section class="plate-section">
-      <div class="plate-wrap">
-        ${renderPlate()}
-      </div>
-    </section>
-
-    ${
-      state.plateType === "diplomatic"
-        ? `
-      <div class="diplomatic-variants">
-        <button type="button" class="variant-btn ${state.diplomaticVariant === "ambassador" ? "active" : ""}" data-variant="ambassador">CD</button>
-        <button type="button" class="variant-btn ${state.diplomaticVariant === "diplomat" ? "active" : ""}" data-variant="diplomat">D</button>
-        <button type="button" class="variant-btn ${state.diplomaticVariant === "staff" ? "active" : ""}" data-variant="staff">T</button>
-      </div>
-    `
-        : ""
-    }
-
-      <section class="lookup-section">
-        ${getInfoTableHTML()}
-      </section>
+      ${plateView}
     </main>
+
+    ${tablesOverlay}
 
     <footer class="app-footer" aria-label="Credits">
       <span><a href="https://github.com/rfeskov" target="_blank" rel="noopener noreferrer">rfeskov</a></span>
@@ -336,6 +506,40 @@ function getInfoTableHTML(): string {
   return `<table class="info-table">${rows.join("")}</table>`;
 }
 
+function sortEntries(entries: Array<[string, string]>): Array<[string, string]> {
+  return [...entries].sort((left, right) => Number(left[0]) - Number(right[0]));
+}
+
+function renderDataTable(title: string, rows: Array<[string, string]>, className: string): string {
+  return `
+    <section class="data-table-card ${className}">
+      <h2>${escapeAttr(title)}</h2>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr><th>Код</th><th>Значение</th></tr>
+          </thead>
+          <tbody>
+            ${rows.map(([code, name]) => `<tr><td>${escapeAttr(code)}</td><td>${escapeAttr(name)}</td></tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
+function renderTablesView(): string {
+  if (state.tableTab === "diplomatic") {
+    return renderDataTable("Дипломатические коды", sortEntries(Object.entries(DIPLOMATIC_CODES)), "data-table-card--diplomatic");
+  }
+
+  if (state.tableTab === "military") {
+    return renderDataTable("Военные коды", sortEntries(Object.entries(MILITARY_CODES)), "data-table-card--military");
+  }
+
+  return renderDataTable("Регионы и субъекты", sortEntries(Object.entries(REGIONS)), "data-table-card--regions");
+}
+
 function focusNextPlateField(current: HTMLInputElement): void {
   const plate = app.querySelector<HTMLElement>("[data-plate]");
   if (!plate) return;
@@ -359,9 +563,40 @@ function bindEvents(): void {
   app.querySelectorAll<HTMLButtonElement>("[data-type]").forEach((btn) => {
     btn.addEventListener("click", () => {
       state.plateType = btn.dataset.type as PlateType;
+      state.showTables = false;
+      state.searchQuery = "";
       if (state.plateType === "civilian" || state.plateType === "military") {
         randomizePlateDefaults(state.plateType);
       }
+      render();
+    });
+  });
+
+  app.querySelectorAll<HTMLButtonElement>("[data-view]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (btn.dataset.view === "tables") {
+        const shouldOpen = !state.showTables;
+        if (shouldOpen) {
+          state.tableTab = state.plateType === "civilian" ? "regions" : state.plateType;
+        }
+        state.showTables = shouldOpen;
+        render();
+      }
+    });
+  });
+
+  app.querySelectorAll<HTMLButtonElement>("[data-close-tables]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.showTables = false;
+      render();
+    });
+  });
+
+  app.querySelectorAll<HTMLButtonElement>("[data-table-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tab = btn.dataset.tableTab as State["tableTab"] | undefined;
+      if (!tab) return;
+      state.tableTab = tab;
       render();
     });
   });
@@ -371,6 +606,36 @@ function bindEvents(): void {
       state.diplomaticVariant = btn.dataset.variant as DiplomaticVariant;
       render();
     });
+  });
+
+  const searchInput = app.querySelector<HTMLInputElement>("[data-search]");
+  const searchResults = app.querySelector<HTMLElement>("[data-search-results]");
+
+  searchInput?.addEventListener("input", () => {
+    state.searchQuery = searchInput.value;
+    const results = getSearchResults(state.searchQuery);
+    const hasQuery = state.searchQuery.trim().length > 0;
+    if (searchResults) {
+      searchResults.innerHTML = getSearchResultsHTML(results, hasQuery);
+    }
+  });
+
+  searchInput?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    const results = getSearchResults(searchInput.value);
+    if (results[0]) {
+      event.preventDefault();
+      applySearchSelection(results[0]);
+    }
+  });
+
+  searchResults?.addEventListener("click", (event) => {
+    const target = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-search-code]");
+    if (!target) return;
+    const code = target.dataset.searchCode ?? "";
+    const name = target.dataset.searchName ?? "";
+    if (!code || !name) return;
+    applySearchSelection({ code, name });
   });
 
   const plate = app.querySelector<HTMLElement>("[data-plate]");
