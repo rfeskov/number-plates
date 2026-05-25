@@ -29,6 +29,8 @@ body {
   color: var(--text);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 #app {
@@ -826,6 +828,11 @@ header {
     font-size: 32px;
   }
 
+  .plate-ng__number .plate-static {
+    line-height: 50px;
+    font-size: 22px;
+  }
+
   .plate-ng__number .series1 {
     width: 27px;
     padding-left: 12px;
@@ -863,6 +870,10 @@ header {
     margin-top: 5px;
     line-height: 24px;
     font-size: 20px;
+  }
+
+  .plate-ng--diplomatic .plate-static {
+    top: 3px;
   }
 
   .lookup-section {
