@@ -330,7 +330,7 @@ header {
 }
 
 .plate-ng__number .number {
-  width: 60px;
+  width: 64px;
   padding: 0 4px;
 }
 
@@ -414,6 +414,16 @@ header {
   border-color: #333;
 }
 
+.plate-ng--military .plate-ng__number {
+  justify-content: center;
+  gap: 5px;
+}
+
+.plate-ng--military .digits4,
+.plate-ng--military .letters2 {
+  padding: 0 5px;
+}
+
 .plate-ng--military .plate-ng__number,
 .plate-ng--military .plate-ng__region,
 .plate-ng--military .plate-ng__number input,
@@ -451,6 +461,8 @@ header {
 
 .plate-ng--diplomatic .plate-static {
   color: #fff;
+  position: relative;
+  top: 4px;
 }
 
 .plate-ng--diplomatic .plate-ng__region {
@@ -820,7 +832,7 @@ header {
   }
 
   .plate-ng__number .number {
-    width: 54px;
+    width: 58px;
   }
 
   .plate-ng__number .series2 {
